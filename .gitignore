@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+.uv/
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+*.weights
+
+# Video/media files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+
+# Node
+node_modules/
+.next/
+out/
+
+# Go
+/packages/processor/processor
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Data (keep structure, ignore large files)
+packages/cv/data/*.mp4
+packages/cv/data/*.avi
+packages/cv/models/*.pt
+
+# Jupyter
+.ipynb_checkpoints/

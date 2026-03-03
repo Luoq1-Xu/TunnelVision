@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session.json",
+  "title": "Session",
+  "type": "object",
+  "required": ["id", "status"],
+  "properties": {
+    "id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "extracting", "tracking", "reconstructing", "done", "error"]
+    },
+    "video_filename": { "type": "string" },
+    "pitcher_name": { "type": ["string", "null"] },
+    "pitches": {
+      "type": "array",
+      "items": { "$ref": "pitch.json" }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+[project]
+name = "tunnelvision-api"
+version = "0.1.0"
+description = "FastAPI backend for TunnelVision pitch tunneling analysis"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pydantic>=2.0",
+    "pybaseball>=2.2",
+    "pandas",
+    "numpy",
+    "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "httpx",
+    "ruff",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tunnelvision_api"]
+
+[tool.ruff]
+line-length = 100

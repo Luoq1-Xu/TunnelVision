@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pitch.json",
+  "title": "Pitch",
+  "type": "object",
+  "required": ["id", "session_id", "pitch_type", "velocity_mph", "trajectory", "confidence"],
+  "properties": {
+    "id": { "type": "string" },
+    "session_id": { "type": "string" },
+    "pitch_type": {
+      "type": "string",
+      "enum": ["FF", "SI", "FC", "SL", "CU", "CH"]
+    },
+    "velocity_mph": { "type": "number" },
+    "trajectory": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TrajectoryPoint" }
+    },
+    "tunnel_metrics": {
+      "oneOf": [
+        { "$ref": "#/$defs/TunnelMetrics" },
+        { "type": "null" }
+      ]
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "$defs": {
+    "TrajectoryPoint": {
+      "type": "object",
+      "required": ["x", "y", "z", "t"],
+      "properties": {
+        "x": { "type": "number", "description": "Horizontal position in feet" },
+        "y": { "type": "number", "description": "Distance from plate in feet (0=plate, 60.5=rubber)" },
+        "z": { "type": "number", "description": "Vertical position in feet" },
+        "t": { "type": "number", "description": "Time from release in seconds" }
+      }
+    },
+    "TunnelMetrics": {
+      "type": "object",
+      "required": ["tunnel_differential_inches", "plate_differential_inches", "break_differential_inches", "release_point_1", "release_point_2"],
+      "properties": {
+        "tunnel_differential_inches": { "type": "number" },
+        "plate_differential_inches": { "type": "number" },
+        "break_differential_inches": { "type": "number" },
+        "release_point_1": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "release_point_2": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    }
+  }
+}

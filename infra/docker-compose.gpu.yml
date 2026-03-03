@@ -1,0 +1,20 @@
+# GPU override for ML inference
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up
+services:
+  cv-worker:
+    image: tunnelvision-cv:latest
+    build:
+      context: ../packages/cv
+      dockerfile: Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy

@@ -188,5 +188,8 @@ The Statcast fetch exceeded the function timeout. Try:
 - Check that `NEXT_PUBLIC_API_URL` is empty or unset in Vercel environment variables
 - Check browser dev tools Network tab for the actual request URL
 
+### "No Next.js version detected" error
+Vercel's framework detection checks for `next` in the root `package.json` before running any build commands. The root `package.json` must list `next` as a dependency (matching the version in `packages/web/package.json`). This doesn't affect the actual build — the `buildCommand` in `vercel.json` still builds from `packages/web`.
+
 ### CORS errors
 Add your frontend domain to the `CORS_ORIGINS` environment variable. This is only needed if the frontend and API are on different domains.

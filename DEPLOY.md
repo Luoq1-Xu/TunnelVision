@@ -15,6 +15,42 @@ The API runs as a serverless Python function at `/api/*`. The frontend is built 
 
 ---
 
+## How It Works
+
+Understanding the deployment architecture helps when troubleshooting:
+
+```
+repo root/
+├── package.json          ← Root package.json with "next" dependency (for Vercel framework detection)
+├── vercel.json           ← Build/install commands, function config, rewrites
+├── api/
+│   ├── index.py          ← Python serverless function entrypoint (sets sys.path, env vars)
+│   └── requirements.txt  ← Python deps installed by Vercel for the function
+├── packages/
+│   ├── web/              ← Next.js frontend (built via buildCommand)
+│   │   ├── package.json  ← Has "next" + React deps
+│   │   └── src/
+│   │       └── lib/
+│   │           └── api.ts  ← Frontend API client (uses relative paths in production)
+│   └── api/
+│       └── src/           ← FastAPI app code (bundled via includeFiles)
+│           ├── main.py
+│           └── tunnelvision_api/
+```
+
+**Key wiring:**
+
+1. `vercel.json` sets `framework: "nextjs"` — Vercel expects to find `next` in a `package.json`
+2. The **root** `package.json` lists `next` as a dependency purely for Vercel's framework detection
+3. `installCommand` runs `npm install` at root (satisfies detection), then `cd packages/web && npm install` (installs frontend deps)
+4. `buildCommand` builds the Next.js app from `packages/web`
+5. `functions."api/index.py".includeFiles` bundles `packages/api/src/**` into the serverless function so `api/index.py` can import from it via `sys.path`
+6. `rewrites` routes all `/api/*` requests to the Python function
+7. `api/index.py` sets `PYBASEBALL_CACHE=/tmp/pybaseball` before imports (Vercel's filesystem is read-only except `/tmp`)
+8. `packages/web/src/lib/api.ts` uses `""` as the API base in the browser (relative `/api/...` paths), and `http://localhost:8000` for SSR/local dev
+
+---
+
 ## Prerequisites
 
 1. A [Vercel account](https://vercel.com/signup) (free Hobby tier works)
@@ -65,14 +101,13 @@ In the Vercel project dashboard, go to **Settings > Environment Variables** and 
 
 ### Required
 
-| Variable | Value | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | *(leave empty or omit)* | When frontend and API share a domain, relative `/api/...` paths work automatically. Only set this if deploying the API separately. |
+None — the defaults work out of the box.
 
 ### Optional
 
 | Variable | Value | Notes |
 |---|---|---|
+| `NEXT_PUBLIC_API_URL` | *(leave empty or omit)* | When frontend and API share a domain, relative `/api/...` paths work automatically. Only set this if deploying the API separately. |
 | `CORS_ORIGINS` | `https://your-custom-domain.com` | Comma-separated list of additional allowed origins. `http://localhost:3000` is always included for local dev. |
 
 ---
@@ -81,9 +116,9 @@ In the Vercel project dashboard, go to **Settings > Environment Variables** and 
 
 Click **"Deploy"** in the Vercel dashboard. Vercel will:
 
-1. Install frontend dependencies (`cd packages/web && npm install`)
-2. Build the Next.js app (`cd packages/web && npm run build`)
-3. Bundle the Python serverless function from `api/index.py` with `api/requirements.txt`
+1. Run `installCommand`: install root deps (for Next.js detection) + `packages/web` deps
+2. Run `buildCommand`: build the Next.js app from `packages/web`
+3. Bundle the Python serverless function from `api/index.py` with `api/requirements.txt`, including `packages/api/src/**` via `includeFiles`
 4. Deploy both under your project URL (e.g., `https://tunnelvision-xxxxx.vercel.app`)
 
 ---
@@ -159,7 +194,10 @@ The frontend at `http://localhost:3000` will call the API at `http://localhost:8
 - PyBaseball's Statcast data fetches can be slow (5-15 seconds), especially for large date ranges. On the Hobby plan, consider using narrow date ranges and small `limit` values.
 
 ### Cold Starts
-Python serverless functions have ~1-3 second cold starts. The first request after a period of inactivity will be slower. The Chadwick player registry (used by player search) is cached in memory after the first load, but this cache resets on cold start.
+Python serverless functions have ~1-3 second cold starts. The first request after a period of inactivity will be slower. The Chadwick player registry (used by player search) is downloaded on first call and cached in `/tmp` — but `/tmp` is ephemeral and resets on cold start.
+
+### Read-Only Filesystem
+Vercel serverless functions have a read-only filesystem except `/tmp` (512 MB limit). The `api/index.py` entrypoint sets `PYBASEBALL_CACHE=/tmp/pybaseball` to redirect pybaseball's cache writes. If you add other Python libraries that write to disk, ensure they also write to `/tmp`.
 
 ### Bundle Size
 The Python function with `pybaseball`, `pandas`, `numpy`, and `scipy` uses a significant portion of Vercel's 250MB bundle limit. Avoid adding heavy dependencies to `api/requirements.txt`.
@@ -174,8 +212,21 @@ The session and pitch database routes (`/api/sessions/*`, `/api/pitches/*`) are 
 
 ## Troubleshooting
 
+### "No Next.js version detected" error
+Vercel's framework detection checks for `next` in the root `package.json` before running any build commands. The root `package.json` must list `next` as a dependency (matching the version in `packages/web/package.json`). The `installCommand` in `vercel.json` must also run `npm install` at the root level first.
+
+### "Read-only file system" errors in API function
+A Python library is trying to write outside `/tmp`. Check which library is writing and configure it to use `/tmp` instead. For pybaseball, set `PYBASEBALL_CACHE=/tmp/pybaseball` (already handled in `api/index.py`).
+
 ### "Module not found" errors in the API function
-Ensure `api/requirements.txt` includes all Python dependencies. Vercel installs these automatically during build.
+- Ensure `api/requirements.txt` includes all Python dependencies. Vercel installs these automatically during build.
+- If importing from `packages/api/src/`, ensure `vercel.json` has `includeFiles: "packages/api/src/**"` in the function config.
+
+### API returns 502 Bad Gateway
+Check the Vercel function logs (Dashboard > Deployments > Functions tab). Common causes:
+- Import errors (missing dependency or missing `includeFiles`)
+- Filesystem write errors (library trying to write outside `/tmp`)
+- The response body in the browser often contains the specific error message
 
 ### API returns 504 Gateway Timeout
 The Statcast fetch exceeded the function timeout. Try:
@@ -187,9 +238,6 @@ The Statcast fetch exceeded the function timeout. Try:
 - If both are on the same Vercel deployment, ensure the frontend uses relative paths (`/api/...`) not an absolute URL
 - Check that `NEXT_PUBLIC_API_URL` is empty or unset in Vercel environment variables
 - Check browser dev tools Network tab for the actual request URL
-
-### "No Next.js version detected" error
-Vercel's framework detection checks for `next` in the root `package.json` before running any build commands. The root `package.json` must list `next` as a dependency (matching the version in `packages/web/package.json`). This doesn't affect the actual build — the `buildCommand` in `vercel.json` still builds from `packages/web`.
 
 ### CORS errors
 Add your frontend domain to the `CORS_ORIGINS` environment variable. This is only needed if the frontend and API are on different domains.

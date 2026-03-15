@@ -1,25 +1,19 @@
-.PHONY: help dev setup cv-setup api-setup web-setup infra-up infra-down clean
+.PHONY: help dev setup cv-setup web-setup infra-up infra-down clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Setup
-setup: cv-setup api-setup web-setup ## Install all dependencies
+setup: cv-setup web-setup ## Install all dependencies
 
 cv-setup: ## Install CV package dependencies
 	cd packages/cv && uv sync
-
-api-setup: ## Install API package dependencies
-	cd packages/api && uv sync
 
 web-setup: ## Install web frontend dependencies
 	cd packages/web && npm install
 
 # Development
-dev-api: ## Run API dev server
-	cd packages/api && uv run uvicorn src.main:app --reload --port 8000
-
-dev-web: ## Run web dev server
+dev: ## Run dev server
 	cd packages/web && npm run dev
 
 # Infrastructure

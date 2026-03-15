@@ -1,7 +1,5 @@
 import { Pitch } from "@/types/pitch";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window === "undefined" ? "http://localhost:8000" : "");
-
 export interface PlayerSearchResult {
   mlbam_id: number;
   first_name: string;
@@ -19,7 +17,7 @@ export async function searchPlayers(
     limit: limit.toString(),
   });
 
-  const res = await fetch(`${API_BASE}/api/statcast/players/search?${params}`);
+  const res = await fetch(`/api/statcast/players/search?${params}`);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     throw new Error(detail.detail || `API error: ${res.status}`);
@@ -40,7 +38,7 @@ export async function fetchPitcherPitchesById(
   });
 
   const res = await fetch(
-    `${API_BASE}/api/statcast/pitcher/${mlbamId}?${params}`
+    `/api/statcast/pitcher/${mlbamId}?${params}`
   );
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
@@ -64,7 +62,7 @@ export async function fetchPitcherPitches(
     limit: limit.toString(),
   });
 
-  const res = await fetch(`${API_BASE}/api/statcast/pitcher?${params}`);
+  const res = await fetch(`/api/statcast/pitcher?${params}`);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     throw new Error(detail.detail || `API error: ${res.status}`);
@@ -81,7 +79,7 @@ export async function fetchGamePitches(
     limit: limit.toString(),
   });
 
-  const res = await fetch(`${API_BASE}/api/statcast/game?${params}`);
+  const res = await fetch(`/api/statcast/game?${params}`);
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     throw new Error(detail.detail || `API error: ${res.status}`);
